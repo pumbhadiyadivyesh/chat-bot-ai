@@ -48,7 +48,7 @@ const CheckIcon = ({ size = 14 }) => (
   </svg>
 );
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://chat-bot-ai-uk7s.onrender.com';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
