@@ -17,29 +17,34 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
 });
 
-// System Prompt: Highly accurate, structured, and factually grounded AI Assistant
+// System Prompt: Highly accurate, transparent, factually verified AI Assistant
 const SYSTEM_PROMPT = `
 You are Divyesh AI, a helpful, polite, highly knowledgeable, and intelligent all-round AI Assistant.
 
-CORE INSTRUCTIONS & RESPONSE QUALITY:
-1. ACCURACY & FACTUALITY:
-   - Provide strictly accurate, verified, and logical answers.
-   - Do NOT hallucinate, guess, or generate fabricated information.
-   - If you do not know a specific fact, date, or detail, or if information is unavailable, EXPLICITLY STATE THAT YOU DO NOT KNOW instead of generating incorrect info.
+CORE INSTRUCTIONS & FACTUAL RIGOR:
+1. FACT-CHECKING & SEARCH VERIFICATION:
+   - Always fact-check using Google Search.
+   - If a person, company, or entity is obscure, unverified, or cannot be corroborated, state clearly that you cannot find official records for them instead of making assumptions or guessing.
+   - Include references, citations, or sources wherever available.
 
-2. STRUCTURED MARKDOWN PRESENTATION:
-   - Always format your answers using clean, well-structured GitHub-flavored Markdown.
-   - Use headings (##, ###), bold text for key terms, and bullet points or numbered lists wherever helpful to break down complex explanations.
+2. ACCURACY & ZERO SPECULATION:
+   - Strive for 100% deterministic, accurate, and factually verifiable statements.
+   - Do NOT speculate, hallucinate, or fabricate details.
+   - If you do not know a specific fact, date, or detail, or if reliable information is unavailable, explicitly state that you do not know.
+
+3. STRUCTURED MARKDOWN PRESENTATION:
+   - Always format answers using clean, well-structured GitHub-flavored Markdown.
+   - Use headings (##, ###), bold text for key concepts, and bullet points or numbered lists to ensure maximum readability and clarity.
    - For code, always use proper fenced code blocks with language identifiers (e.g. \`\`\`javascript, \`\`\`python).
 
-3. STRICT LANGUAGE MATCHING:
+4. STRICT LANGUAGE MATCHING:
    - Always respond in the EXACT SAME language that the user used to ask their question (English, Gujarati, Hindi, etc.).
-   - If asked in Gujarati -> Respond in clean, natural Gujarati using markdown.
-   - If asked in English -> Respond in fluent English using markdown.
+   - If asked in Gujarati -> Reply in clear, natural Gujarati using markdown.
+   - If asked in English -> Reply in fluent English using markdown.
    - Never mix multiple languages or provide dual translations unless explicitly requested.
 
-4. TONE:
-   - Maintain a courteous, professional, helpful, and concise demeanor.
+5. TONE:
+   - Maintain a courteous, professional, transparent, and concise demeanor.
 `;
 
 // Candidate models list: attempts gemini-1.5-flash first, then gemini-1.5-pro, with modern resilient fallbacks
@@ -51,48 +56,58 @@ const MODELS = [
   'gemini-3.8-flash',
 ];
 
-// Helper to generate content with automatic fallback and Google Search grounding
+// Helper to generate content with automatic fallback across models and search tools
 async function generateWithFallback(contents) {
   let lastError = null;
 
+  // Search config with strict deterministic temperature (0.1)
+  const searchConfig = {
+    systemInstruction: SYSTEM_PROMPT,
+    thinkingConfig: { thinkingBudget: 0 },
+    temperature: 0.1,
+    tools: [{ googleSearch: {} }],
+  };
+
+  const standardConfig = {
+    systemInstruction: SYSTEM_PROMPT,
+    thinkingConfig: { thinkingBudget: 0 },
+    temperature: 0.1,
+  };
+
   for (const model of MODELS) {
-    // 1. Attempt generation with Google Search Grounding enabled
+    // 1. Attempt generation with Google Search Grounding enabled on the model
     try {
       const response = await ai.models.generateContent({
         model,
         contents,
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          thinkingConfig: { thinkingBudget: 0 },
-          temperature: 0.2,
-          tools: [{ googleSearch: {} }],
-        },
+        config: searchConfig,
       });
 
       if (response && response.text) {
         return { text: response.text.trim(), model };
       }
     } catch (searchErr) {
-      console.warn(`Model ${model} with googleSearch error (${searchErr.status || searchErr.message}). Retrying standard generation...`);
-      // 2. Fallback to standard generation with temperature 0.2 if Search tool hits quota limit
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents,
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            thinkingConfig: { thinkingBudget: 0 },
-            temperature: 0.2,
-          },
-        });
+      console.warn(`Model ${model} with search failed (${searchErr.status || searchErr.message}). Checking next steps...`);
+      lastError = searchErr;
 
-        if (response && response.text) {
-          return { text: response.text.trim(), model };
+      // 2. If failure is a tool quota limitation (429 specifically on googleSearch), retry standard generation on same model
+      if (searchErr.status === 429 || searchErr.message?.includes('quota') || searchErr.message?.includes('tools')) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents,
+            config: standardConfig,
+          });
+
+          if (response && response.text) {
+            return { text: response.text.trim(), model };
+          }
+        } catch (stdErr) {
+          console.warn(`Model ${model} standard generation also failed (${stdErr.status || stdErr.message}). Falling back to next model...`);
+          lastError = stdErr;
         }
-      } catch (err) {
-        console.warn(`Model ${model} error (${err.status || err.message}). Switching to fallback...`);
-        lastError = err;
       }
+      // Otherwise proceed to fallback model (e.g. gemini-1.5-flash -> gemini-1.5-pro -> modern flash)
     }
   }
 
