@@ -1,0 +1,12 @@
+# Environment Variables (NEVER commit to git)
+.env
+.env.local
+
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
