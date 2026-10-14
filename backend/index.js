@@ -17,31 +17,29 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
 });
 
-// System Prompt: All-round, highly accurate AI Assistant
+// System Prompt: Highly accurate, structured, and factually grounded AI Assistant
 const SYSTEM_PROMPT = `
 You are Divyesh AI, a helpful, polite, highly knowledgeable, and intelligent all-round AI Assistant.
 
-CORE GUIDELINES:
-1. CAPABILITIES & SCOPE:
-   - You can assist with all topics: general knowledge, coding, programming, mathematics, logic, science, history, writing, business, analysis, and everyday queries.
-   - Provide clear, well-structured, insightful, and practical answers.
+CORE INSTRUCTIONS & RESPONSE QUALITY:
+1. ACCURACY & FACTUALITY:
+   - Provide strictly accurate, verified, and logical answers.
+   - Do NOT hallucinate, guess, or generate fabricated information.
+   - If you do not know a specific fact, date, or detail, or if information is unavailable, EXPLICITLY STATE THAT YOU DO NOT KNOW instead of generating incorrect info.
 
-2. HIGH ACCURACY & LOGIC:
-   - Be strictly logical, accurate, and fact-based in your explanations.
-   - Avoid hallucinating or inventing false information.
-   - If you are unsure about a specific factual claim, date, or detail, clearly state your uncertainty rather than guessing.
+2. STRUCTURED MARKDOWN PRESENTATION:
+   - Always format your answers using clean, well-structured GitHub-flavored Markdown.
+   - Use headings (##, ###), bold text for key terms, and bullet points or numbered lists wherever helpful to break down complex explanations.
+   - For code, always use proper fenced code blocks with language identifiers (e.g. \`\`\`javascript, \`\`\`python).
 
 3. STRICT LANGUAGE MATCHING:
-   - Always detect and respond in the EXACT SAME language that the user asks their question in.
-   - If asked in English -> Reply in clear, natural English.
-   - If asked in Gujarati -> Reply in polite, natural Gujarati.
-   - If asked in Hindi -> Reply in polite, clear Hindi.
-   - If asked in Gujlish or Hinglish (Latin script) -> Reply in that same conversational style.
-   - Never mix multiple languages or provide dual translations unless explicitly asked.
+   - Always respond in the EXACT SAME language that the user used to ask their question (English, Gujarati, Hindi, etc.).
+   - If asked in Gujarati -> Respond in clean, natural Gujarati using markdown.
+   - If asked in English -> Respond in fluent English using markdown.
+   - Never mix multiple languages or provide dual translations unless explicitly requested.
 
-4. TONE & PRESENTATION:
-   - Be courteous, professional, concise, and helpful.
-   - Use clean formatting, bullet points, and code blocks when appropriate.
+4. TONE:
+   - Maintain a courteous, professional, helpful, and concise demeanor.
 `;
 
 // Candidate models list: attempts gemini-1.5-flash first, then gemini-1.5-pro, with modern resilient fallbacks
@@ -53,11 +51,12 @@ const MODELS = [
   'gemini-3.8-flash',
 ];
 
-// Helper to generate content with automatic fallback
+// Helper to generate content with automatic fallback and Google Search grounding
 async function generateWithFallback(contents) {
   let lastError = null;
 
   for (const model of MODELS) {
+    // 1. Attempt generation with Google Search Grounding enabled
     try {
       const response = await ai.models.generateContent({
         model,
@@ -66,15 +65,34 @@ async function generateWithFallback(contents) {
           systemInstruction: SYSTEM_PROMPT,
           thinkingConfig: { thinkingBudget: 0 },
           temperature: 0.2,
+          tools: [{ googleSearch: {} }],
         },
       });
 
       if (response && response.text) {
         return { text: response.text.trim(), model };
       }
-    } catch (err) {
-      console.warn(`Model ${model} error (${err.status || err.message}). Switching to fallback...`);
-      lastError = err;
+    } catch (searchErr) {
+      console.warn(`Model ${model} with googleSearch error (${searchErr.status || searchErr.message}). Retrying standard generation...`);
+      // 2. Fallback to standard generation with temperature 0.2 if Search tool hits quota limit
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            thinkingConfig: { thinkingBudget: 0 },
+            temperature: 0.2,
+          },
+        });
+
+        if (response && response.text) {
+          return { text: response.text.trim(), model };
+        }
+      } catch (err) {
+        console.warn(`Model ${model} error (${err.status || err.message}). Switching to fallback...`);
+        lastError = err;
+      }
     }
   }
 
