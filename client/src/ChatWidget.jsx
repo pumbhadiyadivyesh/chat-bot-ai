@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import ChatBoatLogo from './ChatBoatLogo';
 
 // 🎨 Premium Inlined SVG Icons (Zero dependencies, guaranteed 0 build errors)
 const MessageIcon = ({ size = 26 }) => (
@@ -22,11 +25,6 @@ const SendIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const SparklesIcon = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
-  </svg>
-);
 
 const TrashIcon = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -48,33 +46,284 @@ const CheckIcon = ({ size = 14 }) => (
   </svg>
 );
 
+const MaximizeIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 3h6v6" />
+    <path d="M9 21H3v-6" />
+    <path d="M21 3l-7 7" />
+    <path d="M3 21l7-7" />
+  </svg>
+);
+
+const MinimizeIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 14h6v6" />
+    <path d="M20 10h-6V4" />
+    <path d="M14 10l7-7" />
+    <path d="M10 14l-7 7" />
+  </svg>
+);
+
+// 💻 Interactive Code Block with Copy Action
+function CodeBlock({ language, code }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div style={{
+      margin: '10px 0',
+      borderRadius: '10px',
+      overflow: 'hidden',
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      backgroundColor: '#070a12',
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '6px 12px',
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        fontSize: '11px',
+        color: '#94a3b8',
+        fontFamily: 'monospace',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+      }}>
+        <span>{language || 'code'}</span>
+        <button
+          onClick={handleCopy}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: copied ? '#34d399' : '#94a3b8',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '11px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            transition: 'color 0.15s ease',
+          }}
+        >
+          {copied ? (
+            <>
+              <CheckIcon size={12} />
+              <span style={{ color: '#34d399' }}>Copied!</span>
+            </>
+          ) : (
+            <>
+              <CopyIcon size={12} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <div style={{ padding: '12px', overflowX: 'auto' }}>
+        <pre style={{ margin: 0, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '13px', lineHeight: '1.6', color: '#e2e8f0' }}>
+          <code>{code}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+// 📖 Rich Markdown Renderer for Bot Responses
+function MarkdownRenderer({ content }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => (
+          <h1 style={{ fontSize: '18px', fontWeight: '800', margin: '14px 0 8px', color: '#f8fafc', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '4px' }}>
+            {children}
+          </h1>
+        ),
+        h2: ({ children }) => (
+          <h2 style={{ fontSize: '16px', fontWeight: '700', margin: '12px 0 6px', color: '#f1f5f9' }}>
+            {children}
+          </h2>
+        ),
+        h3: ({ children }) => (
+          <h3 style={{ fontSize: '14.5px', fontWeight: '700', margin: '10px 0 4px', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ display: 'inline-block', width: '4px', height: '14px', borderRadius: '2px', backgroundColor: '#a855f7' }}></span>
+            {children}
+          </h3>
+        ),
+        h4: ({ children }) => (
+          <h4 style={{ fontSize: '13.5px', fontWeight: '600', margin: '8px 0 4px', color: '#a78bfa' }}>
+            {children}
+          </h4>
+        ),
+        p: ({ children }) => (
+          <p style={{ margin: '0 0 11px 0', lineHeight: '1.7', color: '#f1f5f9' }}>
+            {children}
+          </p>
+        ),
+        strong: ({ children }) => (
+          <strong style={{
+            fontWeight: '700',
+            color: '#ffffff',
+            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+            border: '1px solid rgba(99, 102, 241, 0.35)',
+            padding: '1px 5px',
+            borderRadius: '4px',
+            boxShadow: '0 0 8px rgba(99, 102, 241, 0.15)',
+          }}>
+            {children}
+          </strong>
+        ),
+        em: ({ children }) => (
+          <em style={{ fontStyle: 'italic', color: '#cbd5e1' }}>
+            {children}
+          </em>
+        ),
+        ul: ({ children }) => (
+          <ul style={{ margin: '8px 0 12px 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol style={{ margin: '8px 0 12px 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => (
+          <li style={{ lineHeight: '1.7', margin: '3px 0', color: '#f1f5f9' }}>
+            {children}
+          </li>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote style={{
+            margin: '8px 0',
+            borderLeft: '3px solid #8b5cf6',
+            color: '#cbd5e1',
+            backgroundColor: 'rgba(139, 92, 246, 0.08)',
+            padding: '8px 12px',
+            borderRadius: '0 8px 8px 0',
+          }}>
+            {children}
+          </blockquote>
+        ),
+        table: ({ children }) => (
+          <div style={{ overflowX: 'auto', margin: '10px 0', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              {children}
+            </table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th style={{ backgroundColor: 'rgba(255,255,255,0.06)', padding: '8px 12px', textAlign: 'left', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            {children}
+          </td>
+        ),
+        code: ({ className, children }) => {
+          const match = /language-(\w+)/.exec(className || '');
+          const isInline = !match && !String(children).includes('\n');
+          if (isInline) {
+            return (
+              <code style={{
+                backgroundColor: 'rgba(99, 102, 241, 0.18)',
+                color: '#c7d2fe',
+                padding: '2px 6px',
+                borderRadius: '5px',
+                fontSize: '12.5px',
+                fontFamily: 'ui-monospace, monospace',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+              }}>
+                {children}
+              </code>
+            );
+          }
+          return <CodeBlock language={match ? match[1] : ''} code={String(children).replace(/\n$/, '')} />;
+        },
+        pre: ({ children }) => <>{children}</>,
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#818cf8', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+          >
+            {children}
+          </a>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://chat-bot-ai-uk7s.onrender.com';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      text: 'Hello! 👋 I am Divyesh AI Assistant, powered by Google Gemini. How can I help you today?',
+      text: 'Hello! 👋 I am ChatBoat AI Assistant. How can I help you today?',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
   const [loading, setLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
+  const widgetRef = useRef(null);
 
   // Auto-scroll smooth
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // Focus input when opened
+  // Focus textarea when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
+      setTimeout(() => textareaRef.current?.focus(), 150);
     }
+  }, [isOpen]);
+
+  // Close when clicking outside the widget or pressing Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (
+        widgetRef.current &&
+        !widgetRef.current.contains(e.target) &&
+        !e.target.closest('[data-chat-trigger]')
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen]);
 
   // Listen to external custom events (from landing page prompt chips)
@@ -137,12 +386,28 @@ export default function ChatWidget() {
   };
 
   const sendMessage = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!input.trim() || loading) return;
 
     const messageText = input;
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     await handleDirectSend(messageText);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleTextareaChange = (e) => {
+    setInput(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
   };
 
   const handleClearChat = () => {
@@ -207,19 +472,21 @@ export default function ChatWidget() {
             boxShadow: '0 0 10px #10b981',
           }} />
 
-          <MessageIcon size={28} />
+          <ChatBoatLogo size={32} />
         </button>
       )}
 
       {/* 💬 Ultra-Modern Chat Window */}
       {isOpen && (
         <div
+          ref={widgetRef}
+          className="chat-window-modal"
           style={{
-            width: '390px',
+            width: isExpanded ? '760px' : '390px',
             maxWidth: 'calc(100vw - 32px)',
-            height: '600px',
+            height: isExpanded ? '720px' : '590px',
             maxHeight: 'calc(100vh - 48px)',
-            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            backgroundColor: 'rgba(15, 23, 42, 0.96)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
             borderRadius: '24px',
@@ -229,6 +496,7 @@ export default function ChatWidget() {
             flexDirection: 'column',
             overflow: 'hidden',
             animation: 'slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            transition: 'width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
           {/* 🌟 Header */}
@@ -249,13 +517,13 @@ export default function ChatWidget() {
                 width: '42px',
                 height: '42px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.45)',
               }}>
-                <SparklesIcon size={20} />
+                <ChatBoatLogo size={24} />
                 {/* Green Status dot */}
                 <span style={{
                   position: 'absolute',
@@ -266,33 +534,66 @@ export default function ChatWidget() {
                   borderRadius: '50%',
                   backgroundColor: '#10b981',
                   border: '2px solid #0f172a',
+                  boxShadow: '0 0 8px #10b981',
                 }} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc' }}>
-                    Divyesh AI
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', letterSpacing: '-0.2px' }}>
+                    ChatBoat AI
                   </span>
                   <span style={{
                     fontSize: '10px',
                     fontWeight: '700',
-                    backgroundColor: 'rgba(99, 102, 241, 0.3)',
-                    color: '#c7d2fe',
-                    padding: '2px 6px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    padding: '2px 7px',
                     borderRadius: '6px',
                     textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
                   }}>
-                    Turbo
+                    Online
                   </span>
                 </div>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                  Always ready to help • Gemini AI
+                <span style={{ fontSize: '11.5px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                  Instant Assistant • Always Active
                 </span>
               </div>
             </div>
 
             {/* Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Expand/Collapse Toggle */}
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                title={isExpanded ? 'Restore size' : 'Expand window'}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: isExpanded ? '#c7d2fe' : '#94a3b8',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = isExpanded ? '#c7d2fe' : '#94a3b8';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                }}
+              >
+                {isExpanded ? <MinimizeIcon size={15} /> : <MaximizeIcon size={15} />}
+              </button>
+
+              {/* Clear conversation */}
               <button
                 onClick={handleClearChat}
                 title="Clear conversation"
@@ -321,6 +622,7 @@ export default function ChatWidget() {
                 <TrashIcon size={15} />
               </button>
 
+              {/* Close */}
               <button
                 onClick={() => setIsOpen(false)}
                 title="Close chat"
@@ -365,54 +667,6 @@ export default function ChatWidget() {
               background: 'radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent 40%), #0b0f19',
             }}
           >
-            {/* Quick Starters (Only when conversation is fresh) */}
-            {messages.length === 1 && (
-              <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.07)',
-                borderRadius: '16px',
-                padding: '14px',
-                marginTop: '4px',
-              }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
-                  Suggested Prompts
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {[
-                    '👋 What can you do for me?',
-                    '🌐 તમે ગુજરાતીમાં જવાબ આપી શકો છો?',
-                    '⚡ How does your conversation memory work?',
-                  ].map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleDirectSend(suggestion.replace(/^[^\w\s]+\s*/, ''))}
-                      style={{
-                        textAlign: 'left',
-                        padding: '8px 12px',
-                        backgroundColor: 'rgba(99, 102, 241, 0.07)',
-                        border: '1px solid rgba(99, 102, 241, 0.18)',
-                        borderRadius: '10px',
-                        color: '#c7d2fe',
-                        fontSize: '12.5px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.2)';
-                        e.currentTarget.style.borderColor = '#818cf8';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.07)';
-                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.18)';
-                      }}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Render Messages */}
             {messages.map((msg, index) => {
               const isUser = msg.role === 'user';
@@ -429,34 +683,39 @@ export default function ChatWidget() {
                 >
                   <div
                     style={{
-                      maxWidth: '85%',
-                      padding: '12px 16px',
+                      maxWidth: isUser ? '85%' : (isExpanded ? '92%' : '88%'),
+                      padding: isUser ? '12px 16px' : '14px 18px',
                       borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                       fontSize: '14px',
-                      lineHeight: '1.55',
+                      lineHeight: '1.6',
                       wordBreak: 'break-word',
-                      whiteSpace: 'pre-wrap',
                       background: isUser
                         ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
                         : msg.isError
                         ? 'rgba(239, 68, 68, 0.15)'
-                        : 'rgba(255, 255, 255, 0.06)',
+                        : 'rgba(255, 255, 255, 0.05)',
                       color: isUser ? '#fff' : msg.isError ? '#fca5a5' : '#f1f5f9',
                       border: isUser
                         ? 'none'
                         : msg.isError
                         ? '1px solid rgba(239, 68, 68, 0.3)'
-                        : '1px solid rgba(255, 255, 255, 0.09)',
+                        : '1px solid rgba(255, 255, 255, 0.08)',
                       boxShadow: isUser
                         ? '0 4px 14px rgba(99, 102, 241, 0.35)'
-                        : '0 4px 12px rgba(0, 0, 0, 0.2)',
+                        : '0 4px 16px rgba(0, 0, 0, 0.25)',
                       position: 'relative',
                     }}
                   >
-                    {msg.text}
+                    {isUser ? (
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                    ) : msg.isError ? (
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                    ) : (
+                      <MarkdownRenderer content={msg.text} />
+                    )}
                   </div>
 
-                  {/* Subtext: Time & Copy Action */}
+                  {/* Subtext: Time, Model & Copy Action */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -498,6 +757,82 @@ export default function ChatWidget() {
                       </button>
                     )}
                   </div>
+
+                  {/* ⚡ Modern Horizontal Suggested Prompts (Rendered beneath the welcome message on a fresh chat) */}
+                  {!isUser && index === 0 && messages.length === 1 && (
+                    <div style={{
+                      marginTop: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      animation: 'slideUpFade 0.3s ease-out',
+                      maxWidth: isExpanded ? '92%' : '100%',
+                    }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: '#94a3b8',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        paddingLeft: '2px',
+                      }}>
+                        <span>✨</span> Suggested Prompts:
+                      </span>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '7px',
+                      }}>
+                        {[
+                          { icon: '⚡', label: 'What can you do for me?', prompt: 'What can you do for me?' },
+                          { icon: '🌐', label: 'ગુજરાતીમાં વાત કરી શકો છો?', prompt: 'તમે ગુજરાતીમાં વાત કરી શકો છો?' },
+                          { icon: '💡', label: 'Draft a professional email', prompt: 'Draft a polite follow-up email to a business client.' },
+                          { icon: '🧠', label: 'How does your memory work?', prompt: 'How does your multi-turn conversation memory work?' },
+                        ].map((chip, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleDirectSend(chip.prompt)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '7px 13px',
+                              backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                              border: '1px solid rgba(99, 102, 241, 0.22)',
+                              borderRadius: '20px',
+                              color: '#c7d2fe',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.22)';
+                              e.currentTarget.style.borderColor = '#818cf8';
+                              e.currentTarget.style.color = '#ffffff';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.35)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.08)';
+                              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.22)';
+                              e.currentTarget.style.color = '#c7d2fe';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
+                            }}
+                          >
+                            <span>{chip.icon}</span>
+                            <span>{chip.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -524,72 +859,105 @@ export default function ChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* ✍️ Input Bar Footer */}
-          <form
-            onSubmit={sendMessage}
+          {/* ✍️ Ultra-Modern Input Bar Footer */}
+          <div
             style={{
-              padding: '14px 16px',
+              padding: '12px 16px 10px',
               backgroundColor: 'rgba(15, 23, 42, 0.98)',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              flexDirection: 'column',
+              gap: '6px',
             }}
           >
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything in any language..."
-              disabled={loading}
+            <form
+              onSubmit={sendMessage}
               style={{
-                flex: 1,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '8px',
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '12px',
-                padding: '11px 16px',
-                color: '#f8fafc',
-                fontSize: '13.5px',
-                outline: 'none',
+                borderRadius: '16px',
+                padding: '6px 8px 6px 14px',
                 transition: 'all 0.2s ease',
               }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#818cf8';
-                e.target.style.boxShadow = '0 0 12px rgba(99, 102, 241, 0.25)';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+              onFocusCapture={(e) => {
+                e.currentTarget.style.borderColor = '#818cf8';
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(99, 102, 241, 0.25)';
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
               }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                e.target.style.boxShadow = 'none';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-              }}
-            />
-
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              title="Send message"
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                background: input.trim() && !loading
-                  ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
-                  : 'rgba(255, 255, 255, 0.08)',
-                color: input.trim() && !loading ? '#fff' : '#64748b',
-                border: 'none',
-                cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: input.trim() && !loading ? '0 4px 14px rgba(99, 102, 241, 0.4)' : 'none',
-                transition: 'all 0.2s ease',
+              onBlurCapture={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
               }}
             >
-              <SendIcon size={18} />
-            </button>
-          </form>
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={input}
+                onChange={handleTextareaChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask in Gujarati, English, or Hindi..."
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  resize: 'none',
+                  color: '#f8fafc',
+                  fontSize: '13.5px',
+                  fontFamily: 'inherit',
+                  maxHeight: '110px',
+                  minHeight: '26px',
+                  lineHeight: '22px',
+                  padding: '4px 0',
+                  overflowY: input.length > 80 || input.includes('\n') ? 'auto' : 'hidden',
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                title="Send message (Enter)"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: input.trim() && !loading
+                    ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+                    : 'rgba(255, 255, 255, 0.06)',
+                  color: input.trim() && !loading ? '#fff' : '#64748b',
+                  border: 'none',
+                  cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: input.trim() && !loading ? '0 4px 14px rgba(99, 102, 241, 0.4)' : 'none',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <SendIcon size={16} />
+              </button>
+            </form>
+
+            {/* Subtle Helper Tip underneath */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0 4px',
+              fontSize: '11px',
+              color: '#64748b',
+            }}>
+              <span>Enter ↵ to send • Shift+Enter for new line</span>
+              <span style={{ color: '#818cf8', fontWeight: '500' }}>⚡ ChatBoat AI</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

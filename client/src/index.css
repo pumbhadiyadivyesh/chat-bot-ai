@@ -101,3 +101,14 @@ html, body {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* Mobile Responsive Overrides for Chat Window */
+@media (max-width: 600px) {
+  .chat-window-modal {
+    width: calc(100vw - 20px) !important;
+    height: calc(100vh - 36px) !important;
+    max-height: calc(100vh - 36px) !important;
+    border-radius: 18px !important;
+  }
+}
+

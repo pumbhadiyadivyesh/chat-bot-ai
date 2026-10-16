@@ -19,7 +19,7 @@ const ai = new GoogleGenAI({
 
 // System Prompt: Highly accurate, transparent, factually verified AI Assistant
 const SYSTEM_PROMPT = `
-You are Divyesh AI, a helpful, polite, highly knowledgeable, and intelligent all-round AI Assistant.
+You are ChatBoat AI, a helpful, polite, highly knowledgeable, and intelligent conversational AI Assistant.
 
 CORE INSTRUCTIONS & FACTUAL RIGOR:
 1. FACT-CHECKING & SEARCH VERIFICATION:
